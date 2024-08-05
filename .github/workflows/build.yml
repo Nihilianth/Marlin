@@ -43,8 +43,8 @@ jobs:
 
     - name: Copy Build Artifacts
       run: |
-        echo f | xcopy .pio\build\BIGTREE_SKR_2_F429_USB\firmware.bin release\firmware.bin /E /Y
-        echo f | xcopy .pio\build\BIGTREE_SKR_2_F429_USB\firmware.bin release\firmware.bin /E /Y
+        cp .pio/build/BIGTREE_SKR_2_F429_USB/firmware.bin release/firmware.bin
+        cp .pio/build/BIGTREE_SKR_2_F429_USB/firmware.elf release/firmware.elf
 
     - name: Upload Release Assets
       uses: actions/upload-artifact@v3
