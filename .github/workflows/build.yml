@@ -6,9 +6,12 @@ name: CI
 # events but only for the master branch
 on:
   push:
-    branches: [ master, develop ]
-  pull_request:
-    branches: [ master, develop ]
+    tags:
+      - 'v*.*.*'
+  # push:
+  #   branches: [ master, develop ]
+  # pull_request:
+  #   branches: [ master, develop ]
   workflow_dispatch:  # Allow manual trigger of the workflow
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
@@ -31,6 +34,67 @@ jobs:
         pip install platformio
     # It is important to first install the libraries before compiling, since otherwise compilation might fail to find the just-installed libraries
     - name: Install platformIO libraries
-      run: pio lib install
+      run: pio pkg install
     - name: Run PlatformIO
       run: platformio run
+
+    - name: Create Release Directory
+      run: mkdir release
+
+    - name: Copy Build Artifacts
+      run: |
+        echo f | xcopy .pio\build\BIGTREE_SKR_2_F429_USB\firmware.bin release\firmware.bin /E /Y
+        echo f | xcopy .pio\build\BIGTREE_SKR_2_F429_USB\firmware.bin release\firmware.bin /E /Y
+
+    - name: Upload Release Assets
+      uses: actions/upload-artifact@v3
+      with:
+        name: release-artifacts
+        path: release
+  create_release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: Download Build Artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: release-artifacts
+          path: release
+
+      - name: Create GitHub Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: "Release ${{ github.ref }}: ${{ env.tag_annotation }}"
+          draft: false
+          prerelease: false
+          body: |
+            Commits for ${{ github.ref }}:
+
+      - name: Upload Release Assets - Release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: release\firmware.bin
+          asset_name: firmware.bin
+          asset_content_type: application/octet-stream
+
+      - name: Upload Release Assets - Debug
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: release\firmware.elf
+          asset_name: firmware.elf
+          asset_content_type: application/octet-stream
